@@ -1,0 +1,26 @@
+{
+  "name": "t-hotel-room-list-page",
+  "description": "Page component for hotel room listing page",
+  "main": "t-hotel-room-list-page.html",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.4.0",
+    "t-sessionstorage": "travelnxtelements/t-sessionstorage#^1.0.3",
+    "t-notify": "atomelements/t-notify#^1.1.1",
+    "iron-icon": "polymerelements/iron-icon#^1.0.11",
+    "t-tabs-v2": "atomelements/t-tabs-v2#^1.0.1",
+    "t-hotel-room-list": "travelnxtelements/t-hotel-room-list#^1.0.16",
+    "iron-flex-layout": "polymerelements/iron-flex-layout#^1.3.1",
+    "iron-pages": "polymerelements/iron-pages#^1.0.8",
+    "t-text-container": "travelnxtelements/t-text-container#^1.1.2",
+    "t-behavior": "travelnxtelements/t-behavior#^1.0.1",
+    "t-shared-lib": "travelnxtElements/t-shared-lib#^1.0.0",
+    "t-carousel": "atomelements/t-carousel#^1.1.3",
+    "t-loader": "atomelements/t-loader#^1.1.4"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.0.0",
+    "web-component-tester": "^4.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0"
+  }
+}

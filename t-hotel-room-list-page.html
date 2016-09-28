@@ -1,0 +1,296 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../iron-pages/iron-pages.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../t-text-container/travel-element-styles.html">
+<link rel="import" href="../t-sessionstorage/t-sessionstorage.html">
+<link rel="import" href="../t-notify/t-notify.html">
+<link rel="import" href="../t-tabs-v2/t-tabs.html">
+<link rel="import" href="../t-hotel-room-list/t-hotel-room-policy-provider.html">
+<link rel="import" href="../t-hotel-room-list/t-hotel-room-list.html">
+<link rel="import" href="../t-hotel-room-list/t-hotel-details-tab.html">
+<link rel="import" href="../t-hotel-room-list/t-hotel-room-list-provider.html">
+<link rel="import" href="../t-carousel/t-image-carousel.html">
+<link rel="import" href="../t-behavior/t-page-behavior.html">
+<link rel="import" href="../t-behavior/t-session-behavior.html"/>
+<link rel="import" href="../t-shared-lib/t-date-behavior.html">
+
+<!--
+A comment describing this element
+
+Example:
+
+    <t-hotel-room-list-page></t-hotel-room-list-page>
+
+Example:
+
+    <t-hotel-room-list-page>
+      <h2>Hello t-hotel-room-list-page</h2>
+    </t-hotel-room-list-page>
+
+@demo demo/index.html
+-->
+<dom-module id="t-hotel-room-list-page">
+    <template>
+        <style include="iron-flex"></style>
+        <style include="iron-flex-alignment"></style>
+        <style include="travel-element-styles">
+            :host {
+                display: block;
+                font-family: var(--header-font-family, --primary-font-family);
+                font-size: var(--font-14, 14px);
+            }
+        .list-item-half {
+            width:50%;
+            box-sizing:border-box;
+            -webkit-box-sizing:border-box;
+            -moz-box-sizing:border-box;
+        }
+        .list-item-half:nth-child(odd) {
+            padding-right:5px;
+        }
+        .icon-star{
+            width:15px;
+            height:15px;
+        }
+        .details-tab .border-bottom:last-of-type{
+            display:none;
+        }
+        </style>
+
+        <t-notify id="notify"></t-notify>
+
+        <content></content>
+
+        <t-image-carousel
+          id="carousel"
+          light-box
+            sizing="cover"
+            auto-slide-interval="300000"
+          loading-icon="[[hotelIcon]]"
+          height="200">
+      </t-image-carousel>
+
+        <div class="section-small">
+          <div class="font-16 primary-text margin-bottom">{{itinerary.name}}</div>
+          <a class="layout horizontal start link-style font-12 margin-bottom" href="{{mapPageUrl}}" style="margin-left: -2px;">
+              <iron-icon class="icon-star" icon="maps:place"></iron-icon>&nbsp;
+              <span>{{itinerary.address}}</span>
+          </a>
+          <div class="layout horizontal">
+              <template is="dom-repeat" items="[[ratingList]]" >
+                  <iron-icon class="icon-star" icon="star"></iron-icon>
+              </template>
+          </div>
+      </div>
+
+        <t-tabs 
+            selected="{{activeTab}}" 
+            noink 
+            inverted 
+            alignment="fullbleed">
+            <t-tab>Rooms</t-tab>
+            <t-tab>Details</t-tab>    
+        </t-tabs>
+
+        <template is="dom-if" if="[[loading]]">
+            <div class="loader-section section-small" id="loaderContainer">
+                <p class="primary-text text-center margin-bottom-medium">
+                    Please do not refresh the page while we are checking for the availability of the rooms...
+                </p>
+                <div class="layout horizontal center-justified">
+                    <t-loader id="loader" active></t-loader>
+                </div>
+            </div>
+        </template>
+
+        <template is="dom-if" if="[[!loading]]">
+          <iron-pages selected="{{activeTab}}">
+              <div>
+                <t-hotel-room-list
+                  rooms="[[itinerary.rooms]]"
+                  stayDuration="{{itinerary.stayDuration}}">
+                  <t-hotel-room-policy-provider
+                    id="policyProvider"
+                api-base-url="[[apiBaseUrl]]"
+                api-relative-url="api/hotel/results/single/policies"
+                auth-token="[[authToken]]"
+                      search-id="[[searchId]]"
+                      itinerary-id="[[itinerary.id]]">
+                  </t-hotel-room-policy-provider>     
+              </t-hotel-room-list> 
+              </div>
+              <div>
+              <t-hotel-details-tab
+                descriptions="[[itinerary.descriptions]]"
+                amenities="[[itinerary.amenities]]"
+                pointsOfInterest="[[itinerary.pointsOfInterest]]">
+              </t-hotel-details-tab>
+              </div>
+          </iron-pages>
+        </template>
+
+        <t-hotel-room-list-provider
+            id="singleAvailApi"
+            api-base-url="[[apiBaseUrl]]"
+            api-relative-url="api/hotel/results/single"
+            auth-token="[[authToken]]"
+            loading="{{loading}}"
+            search-id="[[searchId]]"
+            itinerary-id="[[itinerary.id]]"
+            on-t-hotel-room-list-provider-success="_onSingleAvailSuccess"
+            on-t-hotel-room-list-provider-error="_onSingleAvailError">
+        </t-hotel-room-list-provider>
+
+        <t-sessionstorage
+            id="sessionStore"
+            api-url-format="[[apiUrlFormat]]"
+            on-t-sessionstorage-load-success="_onSessionGet"
+            on-t-sessionstorage-save-success="_onSessionSave">
+        </t-sessionstorage>
+    </template>
+    <script>
+        (function () {
+
+            Polymer({
+
+                is: 't-hotel-room-list-page',
+
+                behaviors: [
+                    TravelNxt.Behaviors.PageBehavior,
+                    TravelNxt.Behaviors.SessionBehavior,
+                    TravelNxt.Behaviors.DateBehavior
+                ],
+
+                properties: {
+
+                  /*
+                   * <p>This property holds the value of selected date of selected room</p>
+                   */
+                  selectedRoom: {
+                      type: Object,
+                      notify: true
+                  },
+
+                  activeTab: {
+                    type: String,
+                    value: "0"
+                  },
+
+                  ratingList: {
+                    type: Array
+                  },
+
+                    /*
+                     * This holds the value of default hotel icon
+                     */
+                    hotelIcon: {
+                        type: String,
+                        value: 'maps:hotel'
+                    },
+
+                },
+
+                observers: [
+                    '__pageLoad(visible)',
+                    '__updatePage(itineraryId)'
+                ],
+
+                listeners: {
+                    'session-get-complete': '_updateItineraryId',
+                    'room-select': '_onRoomSelect'
+                },
+
+                /**
+                 * This is observer method and executed every time `visible` or `searchId` changes
+                 * @param   {String} visible
+                 * @param  {String} searchId
+                 * @return {Void}
+                 */
+                __pageLoad: function (visible) {
+                    if (!visible) {
+                        return;
+                    }
+
+                    this._syncSession();
+                },
+
+                __updatePage: function (itineraryId) {
+
+                    if (!itineraryId) {
+                        this.fire('go-to-search');
+                        return;
+                    }
+
+                    this.$.carousel.data = this.itinerary.photoUrls;
+
+                    this.$.singleAvailApi.singleAvail();
+                },
+
+                _updateItineraryId: function () {
+                  this._populateRatings();
+                    this.itineraryId = this.itinerary.id;
+                },
+
+                _populateRatings: function () {
+                  this.ratingList = [];
+                  var lst =[];
+                  for (var i = 1; i <= this.itinerary.rating; i++) {
+                    lst.push(i);
+                  }
+
+                  this.ratingList = lst;
+                },
+
+                _syncSession: function () {
+                    this._data = [{
+                        key: 'Hotel_Search_Criteria',
+                        propertyName: 'searchCriteria'
+                    },{
+                        key: 'Hotel_Search_Id',
+                        propertyName: 'searchId'
+                    }, {
+                        key: 'Hotel_Itinerary',
+                        propertyName: 'itinerary'
+                    }];
+                    this.getSession();
+                },
+
+                _onSingleAvailSuccess: function (e) {
+                    if (!e || !e.detail) {
+                        return;
+                    }
+
+                    this.itinerary = e.detail.inventory;
+
+                    this._data = [{
+                        key: 'Hotel_Itinerary',
+                        propertyName: 'itinerary',
+                        value: e.detail.inventory
+                    }];
+
+                    this.setSession();
+                },
+
+                _onSingleAvailError: function (e) {
+                },
+
+                _onRoomSelect: function (e) {
+                    if (e.detail) {
+
+                        this.selectedRoom = e.detail;
+
+                        this._data = [{
+                            key: 'Hotel_Room',
+                            value: e.detail
+                        }];
+
+                        this.setSession();
+
+                        this.fire('room-selected', this.selectedRoom);
+                    }
+                }
+            });
+        })();
+    </script>
+</dom-module>
